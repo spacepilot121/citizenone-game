@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useGameStore } from '../game/store/GameStore';
 import { goodMap, goods } from '../game/data/goods';
+import { unlockCosts } from '../game/data/facilities';
 import { vehicles } from '../game/data/world';
 import { routeRisk } from '../game/systems/simulation';
 import { RelayTicker } from '../components/RelayTicker';
@@ -25,6 +26,17 @@ function formatDuration(ms: number): string {
 
 function minutesBetween(startAt: number, endAt: number): string {
   return formatDuration(endAt - startAt);
+}
+
+function formatResourceCost(cost: { money?: number; goods?: Array<{ goodId: string; amount: number }> }): string {
+  const parts: string[] = [];
+  if (cost.money) parts.push(`$${cost.money}`);
+  if (cost.goods?.length) {
+    parts.push(
+      ...cost.goods.map(({ goodId, amount }) => `${amount}x ${goodMap[goodId]?.name ?? goodId}`)
+    );
+  }
+  return parts.length ? parts.join(' · ') : 'No resources required';
 }
 
 export function App() {
@@ -161,6 +173,10 @@ export function App() {
         const upgradeTotal = f.upgradeEndsAt ? formatDuration((2 + f.level) * 60 * 60 * 1000) : null;
         const isBusy = Boolean(f.production || f.upgradeEndsAt);
         const activeTimer = upgradeRemaining ?? productionRemaining;
+        const upgradeCost = 60 + f.level * 40;
+        const unlockCost = unlockCosts[f.id];
+        const plasticPartsCost = goodMap.plastic_parts.recipe ?? [];
+        const basicElectronicsCost = goodMap.basic_electronics.recipe ?? [];
 
         return (
           <div className="modal">
@@ -184,7 +200,7 @@ export function App() {
                 </div>
               )}
               {!f.unlocked ? (
-                <button onClick={() => actions.unlockFacility(f.id)}>Unlock</button>
+                <button onClick={() => actions.unlockFacility(f.id)}>Unlock ({formatResourceCost({ money: unlockCost?.money, goods: [] })})</button>
               ) : (
                 <>
                   <button
@@ -192,7 +208,7 @@ export function App() {
                     onClick={() => actions.startUpgrade(f.id)}
                     disabled={isBusy}
                   >
-                    {isBusy ? `Upgrade Busy (${activeTimer})` : 'Start Upgrade'}
+                    {isBusy ? `Upgrade Busy (${activeTimer})` : `Start Upgrade (${formatResourceCost({ money: upgradeCost })})`}
                   </button>
                   {f.id === 'manufacturing' && (
                     <>
@@ -201,14 +217,14 @@ export function App() {
                         onClick={() => actions.startProduction('manufacturing', 'plastic_parts')}
                         disabled={isBusy}
                       >
-                        {isBusy ? `Manufacturing Busy (${activeTimer})` : 'Produce Plastic Parts'}
+                        {isBusy ? `Manufacturing Busy (${activeTimer})` : `Produce Plastic Parts (${formatResourceCost({ goods: plasticPartsCost })})`}
                       </button>
                       <button
                         className={`action-btn ${isBusy ? 'action-btn--busy' : 'action-btn--ready'}`}
                         onClick={() => actions.startProduction('manufacturing', 'basic_electronics')}
                         disabled={isBusy}
                       >
-                        {isBusy ? `Manufacturing Busy (${activeTimer})` : 'Produce Basic Electronics'}
+                        {isBusy ? `Manufacturing Busy (${activeTimer})` : `Produce Basic Electronics (${formatResourceCost({ goods: basicElectronicsCost })})`}
                       </button>
                       <button onClick={() => actions.assistProduction('manufacturing')} disabled={!f.production}>Tap Assist (-5m)</button>
                     </>

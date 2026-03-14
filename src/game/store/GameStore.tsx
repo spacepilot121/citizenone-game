@@ -42,6 +42,7 @@ interface GameContextShape {
     debugTriggerEvent: () => void;
     debugUnlockNextLocation: () => void;
     debugForceMarketRefresh: () => void;
+    debugResetGame: () => void;
   };
 }
 
@@ -133,6 +134,11 @@ export function GameStoreProvider({ children }: { children: ReactNode }) {
       debugForceMarketRefresh: () => {
         const ts = currentGameTime(state.debug.timeOffsetMs);
         setState((prev) => forceMarketRefreshDebug(prev, ts));
+      },
+      debugResetGame: () => {
+        const resetState = createInitialState();
+        setNow(currentGameTime(resetState.debug.timeOffsetMs));
+        setState(resetState);
       }
     }),
     [now, state.debug.timeOffsetMs]
