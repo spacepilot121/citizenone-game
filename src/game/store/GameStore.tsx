@@ -31,7 +31,7 @@ interface GameContextShape {
     assistProduction: (facilityId: string) => void;
     startUpgrade: (facilityId: string) => void;
     unlockFacility: (facilityId: string) => void;
-    launchConvoy: (routeId: string, goodId: string, amount: number) => void;
+    launchConvoy: (routeId: string, goodId: string, amount: number, vehicleId?: string) => void;
     startResearch: (unlock: string, label: string) => void;
     isLocationOpen: (hours: [number, number]) => boolean;
     debugAdvance: (hours: number) => void;
@@ -98,9 +98,9 @@ export function GameStoreProvider({ children }: { children: ReactNode }) {
         const ts = currentGameTime(state.debug.timeOffsetMs);
         setState((prev) => unlockFacility(prev, facilityId, ts));
       },
-      launchConvoy: (routeId: string, goodId: string, amount: number) => {
+      launchConvoy: (routeId: string, goodId: string, amount: number, vehicleId?: string) => {
         const ts = currentGameTime(state.debug.timeOffsetMs);
-        setState((prev) => launchConvoy(prev, routeId, goodId, amount, ts));
+        setState((prev) => launchConvoy(prev, routeId, goodId, amount, ts, vehicleId));
       },
       startResearch: (unlock: string, label: string) => {
         const ts = currentGameTime(state.debug.timeOffsetMs);

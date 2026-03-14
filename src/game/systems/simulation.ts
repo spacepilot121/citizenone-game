@@ -266,7 +266,14 @@ export function unlockFacility(state: GameState, facilityId: string, now: number
   return next;
 }
 
-export function launchConvoy(state: GameState, routeId: string, cargoGoodId: string, amount: number, now: number): GameState {
+export function launchConvoy(
+  state: GameState,
+  routeId: string,
+  cargoGoodId: string,
+  amount: number,
+  now: number,
+  vehicleId?: string
+): GameState {
   const next = structuredClone(state);
   if (next.convoys.length >= next.convoySlots) return state;
   const route = next.routes.find((r) => r.id === routeId);
@@ -274,7 +281,7 @@ export function launchConvoy(state: GameState, routeId: string, cargoGoodId: str
   if ((next.goodsInventory[cargoGoodId] ?? 0) < amount) return state;
   const destination = next.locations.find((l) => l.id === route.destinationId);
   if (!destination || !destination.unlocked || !isLocationOpen(destination.openHours, now)) return state;
-  const vehicle = vehicles[0];
+  const vehicle = vehicles.find((v) => v.id === vehicleId) ?? vehicles[0];
   const convoy: Convoy = {
     id: `C-${Math.floor(now / 1000).toString(36)}`,
     slot: next.convoys.length + 1,
