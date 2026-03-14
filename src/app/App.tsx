@@ -28,6 +28,11 @@ function minutesBetween(startAt: number, endAt: number): string {
   return formatDuration(endAt - startAt);
 }
 
+function estimateProductionDuration(level: number): string {
+  const minutes = Math.min(95, Math.max(30, 90 - level * 8));
+  return formatDuration(minutes * 60 * 1000);
+}
+
 function formatResourceCost(cost: { money?: number; goods?: Array<{ goodId: string; amount: number }> }): string {
   const parts: string[] = [];
   if (cost.money) parts.push(`$${cost.money}`);
@@ -196,8 +201,11 @@ export function App() {
         const productionTotal = f.production ? minutesBetween(f.production.startedAt, f.production.endsAt) : null;
         const upgradeRemaining = f.upgradeEndsAt ? formatDuration(f.upgradeEndsAt - now) : null;
         const upgradeTotal = f.upgradeEndsAt ? formatDuration((2 + f.level) * 60 * 60 * 1000) : null;
+        const estimatedUpgradeDuration = formatDuration((2 + f.level) * 60 * 60 * 1000);
         const isBusy = Boolean(f.production || f.upgradeEndsAt);
+        const canTapAssist = Boolean(f.production || f.upgradeEndsAt);
         const activeTimer = upgradeRemaining ?? productionRemaining;
+        const estimatedProductionDuration = estimateProductionDuration(f.level);
         const upgradeCost = 60 + f.level * 40;
         const unlockCost = unlockCosts[f.id];
         const plasticPartsCost = goodMap.plastic_parts.recipe ?? [];
@@ -253,7 +261,7 @@ export function App() {
                     }}
                     disabled={isBusy}
                   >
-                    {isBusy ? `Upgrade Busy (${activeTimer})` : `Start Upgrade (${formatResourceCost({ money: upgradeCost })})`}
+                    {isBusy ? `Upgrade Busy (${activeTimer})` : `Start Upgrade (${formatResourceCost({ money: upgradeCost })} · ${estimatedUpgradeDuration})`}
                   </button>
                   {f.id === 'manufacturing' && (
                     <>
@@ -273,7 +281,7 @@ export function App() {
                         }}
                         disabled={isBusy}
                       >
-                        {isBusy ? `Manufacturing Busy (${activeTimer})` : `Produce Plastic Parts (${formatResourceCost({ goods: plasticPartsCost })})`}
+                        {isBusy ? `Manufacturing Busy (${activeTimer})` : `Produce Plastic Parts (${formatResourceCost({ goods: plasticPartsCost })} · ${estimatedProductionDuration})`}
                       </button>
                       <button
                         className={`action-btn ${isBusy ? 'action-btn--busy' : 'action-btn--ready'}`}
@@ -291,10 +299,13 @@ export function App() {
                         }}
                         disabled={isBusy}
                       >
-                        {isBusy ? `Manufacturing Busy (${activeTimer})` : `Produce Basic Electronics (${formatResourceCost({ goods: basicElectronicsCost })})`}
+                        {isBusy ? `Manufacturing Busy (${activeTimer})` : `Produce Basic Electronics (${formatResourceCost({ goods: basicElectronicsCost })} · ${estimatedProductionDuration})`}
                       </button>
-                      <button onClick={() => actions.assistProduction('manufacturing')} disabled={!f.production}>Tap Assist (-5m)</button>
+                      <button onClick={() => actions.assistProduction('manufacturing')} disabled={!canTapAssist}>Tap Assist (-5m)</button>
                     </>
+                  )}
+                  {f.id !== 'manufacturing' && (
+                    <button onClick={() => actions.assistProduction(f.id)} disabled={!canTapAssist}>Tap Assist (-5m)</button>
                   )}
                   {f.id === 'research_facility' && (
                     <>

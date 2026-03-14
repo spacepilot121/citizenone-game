@@ -73,7 +73,7 @@ export function GameStoreProvider({ children }: { children: ReactNode }) {
       const freshNow = currentGameTime(state.debug.timeOffsetMs);
       setNow(freshNow);
       setState((prev) => tickState(prev, freshNow));
-    }, 10000);
+    }, 1000);
     return () => window.clearInterval(timer);
   }, [state.debug.timeOffsetMs]);
 
