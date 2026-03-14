@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useGameStore } from '../game/store/GameStore';
 import { goodMap, goods } from '../game/data/goods';
 import { unlockCosts } from '../game/data/facilities';
@@ -47,10 +47,35 @@ export function App() {
   const [convoyVehicleId, setConvoyVehicleId] = useState(vehicles[0].id);
   const [convoyGoodId, setConvoyGoodId] = useState('plastic_parts');
   const [convoyAmount, setConvoyAmount] = useState(2);
+  const [isShaking, setIsShaking] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [highlightGoodId, setHighlightGoodId] = useState<string | null>(null);
+  const [highlightResource, setHighlightResource] = useState<'money' | 'gold' | null>(null);
 
   const connectedRoutes = useMemo(() => state.routes.filter((r) => state.locations.find((l) => l.id === r.destinationId)?.unlocked), [state]);
 
   const selectedConvoyVehicle = vehicles.find((v) => v.id === convoyVehicleId) ?? vehicles[0];
+  const stockedGoods = goods.filter((g) => (state.goodsInventory[g.id] ?? 0) > 0);
+
+  function triggerFeedback(message: string, opts?: { goodId?: string; resource?: 'money' | 'gold' }) {
+    setFeedback(message);
+    setIsShaking(true);
+    setHighlightGoodId(opts?.goodId ?? null);
+    setHighlightResource(opts?.resource ?? null);
+    window.setTimeout(() => {
+      setFeedback(null);
+      setIsShaking(false);
+      setHighlightGoodId(null);
+      setHighlightResource(null);
+    }, 1300);
+  }
+
+  useEffect(() => {
+    if (!stockedGoods.length) return;
+    if (!stockedGoods.some((g) => g.id === convoyGoodId)) {
+      setConvoyGoodId(stockedGoods[0].id);
+    }
+  }, [convoyGoodId, stockedGoods]);
 
   return (
     <div className="app">
@@ -58,11 +83,11 @@ export function App() {
         <div>Day {metrics.day}</div>
         <div>{metrics.isNight ? 'Night Phase' : 'Day Phase'}</div>
         <div>Clock {formatGameClock(now)}</div>
-        <div>${state.resources.money}</div>
+        <div className={highlightResource === 'money' ? 'resource-alert' : ''}>${state.resources.money}</div>
         <div>Storage {metrics.storageUsed}/{metrics.storageCap}</div>
         <div>People {state.resources.people}</div>
         <div>Power {metrics.powerUsed}/{metrics.powerCap}</div>
-        <div>Gold {state.resources.gold}</div>
+        <div className={highlightResource === 'gold' ? 'resource-alert' : ''}>Gold {state.resources.gold}</div>
       </header>
 
       {screen === 'dashboard' && (
@@ -120,7 +145,7 @@ export function App() {
         <main className="screen card">
           <h3>Storage</h3>
           <div className="list">
-            {goods.map((g) => (
+            {goods.filter((g) => (state.goodsInventory[g.id] ?? 0) > 0).map((g) => (
               <div key={g.id} className="row">
                 <span>{g.name}</span>
                 <span>{state.goodsInventory[g.id] ?? 0}</span>
@@ -200,12 +225,32 @@ export function App() {
                 </div>
               )}
               {!f.unlocked ? (
-                <button onClick={() => actions.unlockFacility(f.id)}>Unlock ({formatResourceCost({ money: unlockCost?.money, goods: [] })})</button>
+                <button
+                  onClick={() => {
+                    if (unlockCost?.money && state.resources.money < unlockCost.money) {
+                      triggerFeedback('Not enough money to unlock this facility.', { resource: 'money' });
+                      return;
+                    }
+                    actions.unlockFacility(f.id);
+                  }}
+                >
+                  Unlock ({formatResourceCost({ money: unlockCost?.money, goods: [] })})
+                </button>
               ) : (
                 <>
                   <button
                     className={`action-btn ${isBusy ? 'action-btn--busy' : 'action-btn--ready'}`}
-                    onClick={() => actions.startUpgrade(f.id)}
+                    onClick={() => {
+                      if (isBusy) {
+                        triggerFeedback('Facility is busy right now.');
+                        return;
+                      }
+                      if (state.resources.money < upgradeCost) {
+                        triggerFeedback('Not enough money for upgrade.', { resource: 'money' });
+                        return;
+                      }
+                      actions.startUpgrade(f.id);
+                    }}
                     disabled={isBusy}
                   >
                     {isBusy ? `Upgrade Busy (${activeTimer})` : `Start Upgrade (${formatResourceCost({ money: upgradeCost })})`}
@@ -214,14 +259,36 @@ export function App() {
                     <>
                       <button
                         className={`action-btn ${isBusy ? 'action-btn--busy' : 'action-btn--ready'}`}
-                        onClick={() => actions.startProduction('manufacturing', 'plastic_parts')}
+                        onClick={() => {
+                          if (isBusy) {
+                            triggerFeedback('Manufacturing is busy right now.');
+                            return;
+                          }
+                          const missing = plasticPartsCost.find((c) => (state.goodsInventory[c.goodId] ?? 0) < c.amount);
+                          if (missing) {
+                            triggerFeedback(`Missing ${goodMap[missing.goodId]?.name}.`, { goodId: missing.goodId });
+                            return;
+                          }
+                          actions.startProduction('manufacturing', 'plastic_parts');
+                        }}
                         disabled={isBusy}
                       >
                         {isBusy ? `Manufacturing Busy (${activeTimer})` : `Produce Plastic Parts (${formatResourceCost({ goods: plasticPartsCost })})`}
                       </button>
                       <button
                         className={`action-btn ${isBusy ? 'action-btn--busy' : 'action-btn--ready'}`}
-                        onClick={() => actions.startProduction('manufacturing', 'basic_electronics')}
+                        onClick={() => {
+                          if (isBusy) {
+                            triggerFeedback('Manufacturing is busy right now.');
+                            return;
+                          }
+                          const missing = basicElectronicsCost.find((c) => (state.goodsInventory[c.goodId] ?? 0) < c.amount);
+                          if (missing) {
+                            triggerFeedback(`Missing ${goodMap[missing.goodId]?.name}.`, { goodId: missing.goodId });
+                            return;
+                          }
+                          actions.startProduction('manufacturing', 'basic_electronics');
+                        }}
                         disabled={isBusy}
                       >
                         {isBusy ? `Manufacturing Busy (${activeTimer})` : `Produce Basic Electronics (${formatResourceCost({ goods: basicElectronicsCost })})`}
@@ -231,12 +298,25 @@ export function App() {
                   )}
                   {f.id === 'research_facility' && (
                     <>
-                      <button onClick={() => actions.startResearch('convoy_slot', 'Convoy Slot Research')}>Research Convoy Slot</button>
-                      <button onClick={() => actions.startResearch('facility:defence_facility', 'Defence Integration')}>Research Defence Integration</button>
+                      <button onClick={() => {
+                        if (state.resources.gold < 1) {
+                          triggerFeedback('Need 1 gold to start research.', { resource: 'gold' });
+                          return;
+                        }
+                        actions.startResearch('convoy_slot', 'Convoy Slot Research');
+                      }}>Research Convoy Slot</button>
+                      <button onClick={() => {
+                        if (state.resources.gold < 1) {
+                          triggerFeedback('Need 1 gold to start research.', { resource: 'gold' });
+                          return;
+                        }
+                        actions.startResearch('facility:defence_facility', 'Defence Integration');
+                      }}>Research Defence Integration</button>
                     </>
                   )}
                 </>
               )}
+              {feedback && <p className="feedback-warning">{feedback}</p>}
               <button onClick={() => setSelectedFacility(null)}>Close</button>
             </div>
           </div>
@@ -275,10 +355,10 @@ export function App() {
                   ))}
                 </select>
               </label>
-              <label className="input-stack">
+              <label className={`input-stack ${highlightGoodId ? 'resource-alert' : ''}`}>
                 <span>Cargo</span>
                 <select value={convoyGoodId} onChange={(e) => setConvoyGoodId(e.target.value)}>
-                  {goods.map((g) => (
+                  {stockedGoods.map((g) => (
                     <option key={g.id} value={g.id}>{g.name} · in storage {state.goodsInventory[g.id] ?? 0}</option>
                   ))}
                 </select>
@@ -303,12 +383,36 @@ export function App() {
                     <p>Travel time (one-way): {formatDuration(travelMs)}</p>
                     <p>Risk factor: {(risk * 100).toFixed(1)}%</p>
                     <p>Vehicle: {selectedConvoyVehicle.name} · Cargo cap {selectedConvoyVehicle.cargoCapacity}</p>
-                    <button onClick={() => actions.launchConvoy(r.id, convoyGoodId, convoyAmount, convoyVehicleId)}>
+                    <button
+                      className={isShaking ? 'shake-on-fail' : ''}
+                      onClick={() => {
+                        if (state.convoys.length >= state.convoySlots) {
+                          triggerFeedback('No convoy slots available.');
+                          return;
+                        }
+                        if (!actions.isLocationOpen(l.openHours)) {
+                          triggerFeedback('Location is closed right now.');
+                          return;
+                        }
+                        if (!stockedGoods.length) {
+                          triggerFeedback('No stock available for dispatch.');
+                          return;
+                        }
+                        const inStock = state.goodsInventory[convoyGoodId] ?? 0;
+                        if (inStock < convoyAmount) {
+                          triggerFeedback(`Need ${convoyAmount}, only ${inStock} in stock.`, { goodId: convoyGoodId });
+                          return;
+                        }
+                        actions.launchConvoy(r.id, convoyGoodId, convoyAmount, convoyVehicleId);
+                      }}
+                    >
                       Send {selectedConvoyVehicle.name}
                     </button>
                   </div>
                 );
               })}
+              {feedback && <p className="feedback-warning">{feedback}</p>}
+              {highlightGoodId && <p className="feedback-highlight">Missing: {goodMap[highlightGoodId]?.name ?? highlightGoodId}</p>}
               <button onClick={() => setSelectedLocation(null)}>Close</button>
             </div>
           </div>
