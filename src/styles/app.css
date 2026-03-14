@@ -29,3 +29,17 @@
 .action-btn--ready { background: #27864f !important; }
 .action-btn--busy { background: #a43e3e !important; }
 .action-btn:disabled { opacity: 1; cursor: not-allowed; }
+
+.feedback-warning { margin: 4px 0 0; color: #ffd5d5; background: #5a2525; border: 1px solid #9c4747; border-radius: 8px; padding: 8px; font-size: 12px; }
+.feedback-highlight { margin: 0; color: #fff0bf; font-size: 12px; }
+.resource-alert { outline: 2px solid #ffcf70; border-radius: 8px; background: #3c2c0f; padding: 2px 6px; }
+
+.shake-on-fail {
+  animation: btn-shake 0.35s linear 2;
+}
+
+@keyframes btn-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
