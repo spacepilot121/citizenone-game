@@ -16,6 +16,7 @@ export function DebugPanel() {
         <button onClick={actions.debugTriggerEvent}>Trigger convoy event</button>
         <button onClick={actions.debugUnlockNextLocation}>Unlock next location</button>
         <button onClick={actions.debugForceMarketRefresh}>Force market refresh</button>
+        <button onClick={actions.debugResetGame}>Reset game</button>
       </div>
     </aside>
   );
