@@ -159,6 +159,8 @@ export function App() {
         const productionTotal = f.production ? minutesBetween(f.production.startedAt, f.production.endsAt) : null;
         const upgradeRemaining = f.upgradeEndsAt ? formatDuration(f.upgradeEndsAt - now) : null;
         const upgradeTotal = f.upgradeEndsAt ? formatDuration((2 + f.level) * 60 * 60 * 1000) : null;
+        const isBusy = Boolean(f.production || f.upgradeEndsAt);
+        const activeTimer = upgradeRemaining ?? productionRemaining;
 
         return (
           <div className="modal">
@@ -185,12 +187,30 @@ export function App() {
                 <button onClick={() => actions.unlockFacility(f.id)}>Unlock</button>
               ) : (
                 <>
-                  <button onClick={() => actions.startUpgrade(f.id)}>Start Upgrade</button>
+                  <button
+                    className={`action-btn ${isBusy ? 'action-btn--busy' : 'action-btn--ready'}`}
+                    onClick={() => actions.startUpgrade(f.id)}
+                    disabled={isBusy}
+                  >
+                    {isBusy ? `Upgrade Busy (${activeTimer})` : 'Start Upgrade'}
+                  </button>
                   {f.id === 'manufacturing' && (
                     <>
-                      <button onClick={() => actions.startProduction('manufacturing', 'plastic_parts')}>Produce Plastic Parts</button>
-                      <button onClick={() => actions.startProduction('manufacturing', 'basic_electronics')}>Produce Basic Electronics</button>
-                      <button onClick={() => actions.assistProduction('manufacturing')}>Tap Assist (-5m)</button>
+                      <button
+                        className={`action-btn ${isBusy ? 'action-btn--busy' : 'action-btn--ready'}`}
+                        onClick={() => actions.startProduction('manufacturing', 'plastic_parts')}
+                        disabled={isBusy}
+                      >
+                        {isBusy ? `Manufacturing Busy (${activeTimer})` : 'Produce Plastic Parts'}
+                      </button>
+                      <button
+                        className={`action-btn ${isBusy ? 'action-btn--busy' : 'action-btn--ready'}`}
+                        onClick={() => actions.startProduction('manufacturing', 'basic_electronics')}
+                        disabled={isBusy}
+                      >
+                        {isBusy ? `Manufacturing Busy (${activeTimer})` : 'Produce Basic Electronics'}
+                      </button>
+                      <button onClick={() => actions.assistProduction('manufacturing')} disabled={!f.production}>Tap Assist (-5m)</button>
                     </>
                   )}
                   {f.id === 'research_facility' && (

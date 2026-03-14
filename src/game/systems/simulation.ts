@@ -214,7 +214,7 @@ export function tickState(state: GameState, now: number): GameState {
 export function startProduction(state: GameState, facilityId: string, goodId: string, now: number): GameState {
   const next = structuredClone(state);
   const facility = next.facilities.find((f) => f.id === facilityId);
-  if (!facility || !facility.unlocked || facility.production) return state;
+  if (!facility || !facility.unlocked || facility.production || facility.upgradeEndsAt) return state;
   const good = goodMap[goodId];
   if (!good) return state;
   const recipeOk = good.recipe?.every((r) => (next.goodsInventory[r.goodId] ?? 0) >= r.amount) ?? true;
@@ -240,7 +240,7 @@ export function assistProduction(state: GameState, facilityId: string, now: numb
 export function startFacilityUpgrade(state: GameState, facilityId: string, now: number): GameState {
   const next = structuredClone(state);
   const facility = next.facilities.find((f) => f.id === facilityId);
-  if (!facility?.unlocked || facility.upgradeEndsAt) return state;
+  if (!facility?.unlocked || facility.upgradeEndsAt || facility.production) return state;
   const cost = 60 + facility.level * 40;
   if (next.resources.money < cost) return state;
   next.resources.money -= cost;
