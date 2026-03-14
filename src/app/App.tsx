@@ -2,25 +2,50 @@ import { useMemo, useState } from 'react';
 import { useGameStore } from '../game/store/GameStore';
 import { goodMap, goods } from '../game/data/goods';
 import { vehicles } from '../game/data/world';
+import { routeRisk } from '../game/systems/simulation';
 import { RelayTicker } from '../components/RelayTicker';
 import { DebugPanel } from '../components/DebugPanel';
 import '../styles/app.css';
 
 type Screen = 'dashboard' | 'command' | 'locations' | 'storage' | 'convoys' | 'messages';
 
+function formatGameClock(now: number): string {
+  return new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDuration(ms: number): string {
+  const safeMs = Math.max(0, ms);
+  const totalMinutes = Math.ceil(safeMs / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes}m`;
+  if (minutes === 0) return `${hours}h`;
+  return `${hours}h ${minutes}m`;
+}
+
+function minutesBetween(startAt: number, endAt: number): string {
+  return formatDuration(endAt - startAt);
+}
+
 export function App() {
   const { state, metrics, now, actions } = useGameStore();
   const [screen, setScreen] = useState<Screen>('dashboard');
   const [selectedFacility, setSelectedFacility] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  const [convoyVehicleId, setConvoyVehicleId] = useState(vehicles[0].id);
+  const [convoyGoodId, setConvoyGoodId] = useState('plastic_parts');
+  const [convoyAmount, setConvoyAmount] = useState(2);
 
   const connectedRoutes = useMemo(() => state.routes.filter((r) => state.locations.find((l) => l.id === r.destinationId)?.unlocked), [state]);
+
+  const selectedConvoyVehicle = vehicles.find((v) => v.id === convoyVehicleId) ?? vehicles[0];
 
   return (
     <div className="app">
       <header className="topbar card">
         <div>Day {metrics.day}</div>
         <div>{metrics.isNight ? 'Night Phase' : 'Day Phase'}</div>
+        <div>Clock {formatGameClock(now)}</div>
         <div>${state.resources.money}</div>
         <div>Storage {metrics.storageUsed}/{metrics.storageCap}</div>
         <div>People {state.resources.people}</div>
@@ -130,12 +155,32 @@ export function App() {
 
       {selectedFacility && (() => {
         const f = state.facilities.find((x) => x.id === selectedFacility)!;
+        const productionRemaining = f.production ? formatDuration(f.production.endsAt - now) : null;
+        const productionTotal = f.production ? minutesBetween(f.production.startedAt, f.production.endsAt) : null;
+        const upgradeRemaining = f.upgradeEndsAt ? formatDuration(f.upgradeEndsAt - now) : null;
+        const upgradeTotal = f.upgradeEndsAt ? formatDuration((2 + f.level) * 60 * 60 * 1000) : null;
+
         return (
           <div className="modal">
             <div className="card">
               <h4>{f.name}</h4>
               <p>{f.description}</p>
               <p>Status: {f.status}</p>
+              {f.production && (
+                <div className="info-block">
+                  <strong>Build in progress</strong>
+                  <p>{goodMap[f.production.goodId]?.name ?? f.production.goodId} · {f.production.quantity} units</p>
+                  <p>Total build time: {productionTotal}</p>
+                  <p>Time remaining: {productionRemaining}</p>
+                </div>
+              )}
+              {f.upgradeEndsAt && (
+                <div className="info-block">
+                  <strong>Upgrade in progress</strong>
+                  <p>Total upgrade time: {upgradeTotal}</p>
+                  <p>Time remaining: {upgradeRemaining}</p>
+                </div>
+              )}
               {!f.unlocked ? (
                 <button onClick={() => actions.unlockFacility(f.id)}>Unlock</button>
               ) : (
@@ -164,6 +209,7 @@ export function App() {
 
       {selectedLocation && (() => {
         const l = state.locations.find((x) => x.id === selectedLocation)!;
+        const routesToLocation = state.routes.filter((r) => r.destinationId === l.id);
         return (
           <div className="modal">
             <div className="card">
@@ -178,11 +224,55 @@ export function App() {
               ))}
               <h5>Missions</h5>
               {l.missions.map((m) => (
-                <div key={m.id} className="row"><span>{goodMap[m.requestedGoodId]?.name} x{m.quantity}</span><span>${m.moneyReward}</span></div>
+                <div key={m.id} className="row">
+                  <span>{goodMap[m.requestedGoodId]?.name} x{m.quantity}</span>
+                  <span>${m.moneyReward}</span>
+                </div>
               ))}
-              {state.routes.filter((r) => r.destinationId === l.id).map((r) => (
-                <button key={r.id} onClick={() => actions.launchConvoy(r.id, 'plastic_parts', 2)}>Send convoy via {r.id}</button>
-              ))}
+
+              <h5>Dispatch convoy</h5>
+              <label className="input-stack">
+                <span>Convoy vehicle</span>
+                <select value={convoyVehicleId} onChange={(e) => setConvoyVehicleId(e.target.value)}>
+                  {vehicles.map((v) => (
+                    <option key={v.id} value={v.id}>{v.name} (cargo {v.cargoCapacity})</option>
+                  ))}
+                </select>
+              </label>
+              <label className="input-stack">
+                <span>Cargo</span>
+                <select value={convoyGoodId} onChange={(e) => setConvoyGoodId(e.target.value)}>
+                  {goods.map((g) => (
+                    <option key={g.id} value={g.id}>{g.name} · in storage {state.goodsInventory[g.id] ?? 0}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="input-stack">
+                <span>Amount</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={convoyAmount}
+                  onChange={(e) => setConvoyAmount(Math.max(1, Number(e.target.value) || 1))}
+                />
+              </label>
+
+              {routesToLocation.length === 0 ? <p className="muted">No route to this location yet.</p> : routesToLocation.map((r) => {
+                const travelMs = r.distance * 7 * 60 * 1000;
+                const risk = routeRisk(r);
+                return (
+                  <div key={r.id} className="info-block">
+                    <strong>Route {r.id} preview</strong>
+                    <p>Destination: {l.name}</p>
+                    <p>Travel time (one-way): {formatDuration(travelMs)}</p>
+                    <p>Risk factor: {(risk * 100).toFixed(1)}%</p>
+                    <p>Vehicle: {selectedConvoyVehicle.name} · Cargo cap {selectedConvoyVehicle.cargoCapacity}</p>
+                    <button onClick={() => actions.launchConvoy(r.id, convoyGoodId, convoyAmount, convoyVehicleId)}>
+                      Send {selectedConvoyVehicle.name}
+                    </button>
+                  </div>
+                );
+              })}
               <button onClick={() => setSelectedLocation(null)}>Close</button>
             </div>
           </div>
