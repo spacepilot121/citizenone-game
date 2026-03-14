@@ -1,8 +1,8 @@
 import { starterFacilities, unlockCosts } from '../data/facilities';
 import { goods, goodMap } from '../data/goods';
 import { baseLocationId, starterLocations, starterRoutes, vehicles } from '../data/world';
-import { Convoy, Facility, GameMessage, GameState, Location, Mission, Route } from '../models/types';
-import { DAY, HOUR, clamp, currentGameTime, gameDay, gameHour, isLocationOpen, isNightPhase } from '../../utils/time';
+import { Convoy, Facility, GameMessage, GameState, Location, Route } from '../models/types';
+import { HOUR, clamp, currentGameTime, gameDay, gameHour, isLocationOpen, isNightPhase } from '../../utils/time';
 
 const storageUsed = (state: GameState): number =>
   Object.entries(state.goodsInventory).reduce((sum, [id, qty]) => sum + (goodMap[id]?.cargoSize ?? 1) * qty, 0);
@@ -333,6 +333,7 @@ export function startResearch(state: GameState, unlock: string, label: string, n
 export function completeResearchDebug(state: GameState, now: number): GameState {
   if (!state.activeResearch) return state;
   const next = structuredClone(state);
+  if (!next.activeResearch) return state;
   next.activeResearch.endsAt = now - 1;
   return tickState(next, now);
 }
