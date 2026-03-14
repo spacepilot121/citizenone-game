@@ -231,10 +231,21 @@ export function startProduction(state: GameState, facilityId: string, goodId: st
 export function assistProduction(state: GameState, facilityId: string, now: number): GameState {
   const next = structuredClone(state);
   const facility = next.facilities.find((f) => f.id === facilityId);
-  if (!facility?.production) return state;
-  facility.production.endsAt = Math.max(now + 60_000, facility.production.endsAt - 5 * 60_000);
-  next.messages.unshift(makeMessage('crew', `Crew pushed ${facility.name}; timer shortened by 5m.`, now));
-  return next;
+  if (!facility) return state;
+
+  if (facility.production) {
+    facility.production.endsAt = Math.max(now + 60_000, facility.production.endsAt - 5 * 60_000);
+    next.messages.unshift(makeMessage('crew', `Crew pushed ${facility.name}; build timer shortened by 5m.`, now));
+    return next;
+  }
+
+  if (facility.upgradeEndsAt) {
+    facility.upgradeEndsAt = Math.max(now + 60_000, facility.upgradeEndsAt - 5 * 60_000);
+    next.messages.unshift(makeMessage('crew', `Crew pushed ${facility.name}; upgrade timer shortened by 5m.`, now));
+    return next;
+  }
+
+  return state;
 }
 
 export function startFacilityUpgrade(state: GameState, facilityId: string, now: number): GameState {
