@@ -62,6 +62,7 @@ export function App() {
   const [convoyAmount, setConvoyAmount] = useState(2);
   const [isShaking, setIsShaking] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedbackRouteId, setFeedbackRouteId] = useState<string | null>(null);
   const [highlightGoodId, setHighlightGoodId] = useState<string | null>(null);
   const [highlightResource, setHighlightResource] = useState<'money' | 'gold' | null>(null);
 
@@ -71,13 +72,15 @@ export function App() {
   const selectedConvoyVehicle = unlockedVehicles.find((v) => v.id === convoyVehicleId) ?? unlockedVehicles[0];
   const stockedGoods = goods.filter((g) => (state.goodsInventory[g.id] ?? 0) > 0);
 
-  function triggerFeedback(message: string, opts?: { goodId?: string; resource?: 'money' | 'gold' }) {
+  function triggerFeedback(message: string, opts?: { goodId?: string; resource?: 'money' | 'gold'; routeId?: string }) {
     setFeedback(message);
+    setFeedbackRouteId(opts?.routeId ?? null);
     setIsShaking(true);
     setHighlightGoodId(opts?.goodId ?? null);
     setHighlightResource(opts?.resource ?? null);
     window.setTimeout(() => {
       setFeedback(null);
+      setFeedbackRouteId(null);
       setIsShaking(false);
       setHighlightGoodId(null);
       setHighlightResource(null);
@@ -188,7 +191,21 @@ export function App() {
               <strong>{c.id} · {vehicles.find((v) => v.id === c.vehicleId)?.name}</strong>
               <span>Status: {c.status}</span>
               <span>ETA: {Math.max(0, Math.ceil((c.eta - now) / 60000))}m</span>
-              <span>Fuel {c.fuel} · Battery {c.battery} · Armour {c.armour} · Tyres {c.tyres} · Ammo {c.ammo}</span>
+              <div className="convoy-stats">
+                {[
+                  { label: 'Fuel', value: c.fuel },
+                  { label: 'Battery', value: c.battery },
+                  { label: 'Armour', value: c.armour },
+                  { label: 'Tyres', value: c.tyres },
+                  { label: 'Ammo', value: c.ammo },
+                ].map((stat) => (
+                  <label key={stat.label} className="convoy-stat-row">
+                    <span>{stat.label}</span>
+                    <progress max={100} value={Math.max(0, Math.min(100, stat.value))} />
+                    <span>{Math.max(0, Math.round(stat.value))}</span>
+                  </label>
+                ))}
+              </div>
               <small>{c.log[0]}</small>
             </article>
           ))}
@@ -219,7 +236,6 @@ export function App() {
         const upgradeTotal = f.upgradeEndsAt ? formatDuration((2 + f.level) * 60 * 60 * 1000) : null;
         const estimatedUpgradeDuration = formatDuration((2 + f.level) * 60 * 60 * 1000);
         const isBusy = Boolean(f.production || f.upgradeEndsAt);
-        const canTapAssist = Boolean(f.production || f.upgradeEndsAt);
         const activeTimer = upgradeRemaining ?? productionRemaining;
         const estimatedProductionDuration = estimateProductionDuration(f.level);
         const upgradeCost = 60 + f.level * 40;
@@ -229,7 +245,7 @@ export function App() {
 
         return (
           <div className="modal">
-            <div className="card">
+            <div className={`card ${f.id === 'manufacturing' ? 'manufacturing-modal' : ''}`}>
               <h4>{f.name}</h4>
               <p>{f.description}</p>
               <p>Status: {f.status}</p>
@@ -250,6 +266,7 @@ export function App() {
               )}
               {!f.unlocked ? (
                 <button
+                  className={`action-btn ${(unlockCost?.money ?? 0) > state.resources.money ? 'action-btn--busy' : 'action-btn--ready'}`}
                   onClick={() => {
                     if (unlockCost?.money && state.resources.money < unlockCost.money) {
                       triggerFeedback('Not enough money to unlock this facility.', { resource: 'money' });
@@ -262,23 +279,7 @@ export function App() {
                 </button>
               ) : (
                 <>
-                  <button
-                    className={`action-btn ${isBusy ? 'action-btn--busy' : 'action-btn--ready'}`}
-                    onClick={() => {
-                      if (isBusy) {
-                        triggerFeedback('Facility is busy right now.');
-                        return;
-                      }
-                      if (state.resources.money < upgradeCost) {
-                        triggerFeedback('Not enough money for upgrade.', { resource: 'money' });
-                        return;
-                      }
-                      actions.startUpgrade(f.id);
-                    }}
-                    disabled={isBusy}
-                  >
-                    {isBusy ? `Upgrade Busy (${activeTimer})` : `Start Upgrade (${formatResourceCost({ money: upgradeCost })} · ${estimatedUpgradeDuration})`}
-                  </button>
+                  {feedback && <p className="feedback-warning action-feedback">{feedback}</p>}
                   {f.id === 'manufacturing' && (
                     <>
                       <button
@@ -317,33 +318,52 @@ export function App() {
                       >
                         {isBusy ? `Manufacturing Busy (${activeTimer})` : `Produce Basic Electronics (${formatResourceCost({ goods: basicElectronicsCost })} · ${estimatedProductionDuration})`}
                       </button>
-                      <button className={`assist-btn ${!canTapAssist ? 'assist-btn--disabled' : ''}`} onClick={() => actions.assistProduction('manufacturing')} disabled={!canTapAssist}>Tap Assist (-5m)</button>
                     </>
-                  )}
-                  {f.id !== 'manufacturing' && (
-                    <button className={`assist-btn ${!canTapAssist ? 'assist-btn--disabled' : ''}`} onClick={() => actions.assistProduction(f.id)} disabled={!canTapAssist}>Tap Assist (-5m)</button>
                   )}
                   {f.id === 'research_facility' && (
                     <>
-                      <button onClick={() => {
+                      <button
+                        className={`action-btn ${state.resources.gold < 1 ? 'action-btn--busy' : 'action-btn--ready'}`}
+                        onClick={() => {
                         if (state.resources.gold < 1) {
                           triggerFeedback('Need 1 gold to start research.', { resource: 'gold' });
                           return;
                         }
                         actions.startResearch('convoy_slot', 'Convoy Slot Research');
-                      }}>Research Convoy Slot</button>
-                      <button onClick={() => {
+                      }}
+                      >Research Convoy Slot</button>
+                      <button
+                        className={`action-btn ${state.resources.gold < 1 ? 'action-btn--busy' : 'action-btn--ready'}`}
+                        onClick={() => {
                         if (state.resources.gold < 1) {
                           triggerFeedback('Need 1 gold to start research.', { resource: 'gold' });
                           return;
                         }
                         actions.startResearch('facility:defence_facility', 'Defence Integration');
-                      }}>Research Defence Integration</button>
+                      }}
+                      >Research Defence Integration</button>
                     </>
                   )}
+                  <button
+                    className={`action-btn ${isBusy ? 'action-btn--busy' : 'action-btn--ready'}`}
+                    onClick={() => {
+                      if (isBusy) {
+                        triggerFeedback('Facility is busy right now.');
+                        return;
+                      }
+                      if (state.resources.money < upgradeCost) {
+                        triggerFeedback('Not enough money for upgrade.', { resource: 'money' });
+                        return;
+                      }
+                      actions.startUpgrade(f.id);
+                    }}
+                    disabled={isBusy}
+                  >
+                    {isBusy ? `Upgrade Busy (${activeTimer})` : `Start Upgrade (${formatResourceCost({ money: upgradeCost })} · ${estimatedUpgradeDuration})`}
+                  </button>
                 </>
               )}
-              {feedback && <p className="feedback-warning">{feedback}</p>}
+              {!f.unlocked && feedback && <p className="feedback-warning action-feedback">{feedback}</p>}
               <button onClick={() => setSelectedFacility(null)}>Close</button>
             </div>
           </div>
@@ -404,28 +424,42 @@ export function App() {
               {routesToLocation.length === 0 ? <p className="muted">No route to this location yet.</p> : routesToLocation.map((r) => {
                 const travelMs = r.distance * 7 * 60 * 1000;
                 const risk = routeRisk(r);
+                const inStock = state.goodsInventory[convoyGoodId] ?? 0;
+                const noSlots = state.convoys.length >= state.convoySlots;
+                const isClosed = !actions.isLocationOpen(l.openHours);
+                const hasNoStock = !stockedGoods.length;
+                const insufficientStock = inStock < convoyAmount;
+                const convoyIssue = noSlots
+                  ? 'Convoy slot occupied'
+                  : isClosed
+                    ? `Closed (${locationHours})`
+                    : hasNoStock
+                      ? 'No cargo in storage'
+                      : insufficientStock
+                        ? `Need ${convoyAmount}`
+                        : null;
                 return (
                   <div key={r.id} className="info-block">
                     <strong>Route {r.id}</strong>
                     <p>{formatDuration(travelMs)} one-way · {(risk * 100).toFixed(1)}% risk · {selectedConvoyVehicle.name} ({selectedConvoyVehicle.cargoCapacity} cap)</p>
+                    {feedback && feedbackRouteId === r.id && <p className="feedback-warning">{feedback}</p>}
                     <button
-                      className={isShaking ? 'shake-on-fail' : ''}
+                      className={`action-btn ${convoyIssue ? 'action-btn--busy' : 'action-btn--ready'} ${isShaking ? 'shake-on-fail' : ''}`}
                       onClick={() => {
                         if (state.convoys.length >= state.convoySlots) {
-                          triggerFeedback('No convoy slots available.');
+                          triggerFeedback('No convoy slots available.', { routeId: r.id });
                           return;
                         }
                         if (!actions.isLocationOpen(l.openHours)) {
-                          triggerFeedback(`Location is closed right now (open ${locationHours}).`);
+                          triggerFeedback(`Location is closed right now (open ${locationHours}).`, { routeId: r.id });
                           return;
                         }
                         if (!stockedGoods.length) {
-                          triggerFeedback('No stock available for dispatch.');
+                          triggerFeedback('No stock available for dispatch.', { routeId: r.id });
                           return;
                         }
-                        const inStock = state.goodsInventory[convoyGoodId] ?? 0;
                         if (inStock < convoyAmount) {
-                          triggerFeedback(`Need ${convoyAmount}, only ${inStock} in stock.`, { goodId: convoyGoodId });
+                          triggerFeedback(`Need ${convoyAmount}, only ${inStock} in stock.`, { goodId: convoyGoodId, routeId: r.id });
                           return;
                         }
                         actions.launchConvoy(r.id, convoyGoodId, convoyAmount, convoyVehicleId);
@@ -437,7 +471,6 @@ export function App() {
                 );
               })}
               {!locationOpenNow && <p className="muted">Dispatch locked until {locationHours}.</p>}
-              {feedback && <p className="feedback-warning">{feedback}</p>}
               {highlightGoodId && <p className="feedback-highlight">Missing: {goodMap[highlightGoodId]?.name ?? highlightGoodId}</p>}
               <button onClick={() => setSelectedLocation(null)}>Close</button>
             </div>

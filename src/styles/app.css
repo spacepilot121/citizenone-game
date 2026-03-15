@@ -16,11 +16,19 @@
 .list { max-height: 360px; overflow: auto; }
 .modal { position: fixed; inset: 0; background: #0009; display: flex; align-items: center; justify-content: center; padding: 12px; z-index: 20; }
 .modal .card { width: min(500px, 100%); max-height: 90vh; overflow: auto; display: grid; gap: 8px; }
-.ticker { width: 100%; border: none; border-radius: 12px; margin-top: 8px; padding: 12px 10px; text-align: left; background: #192638; color: #dae6fb; }
+.manufacturing-modal { gap: 0; }
+.manufacturing-modal p, .manufacturing-modal h4, .manufacturing-modal h5 { margin: 4px 0; }
+
+.ticker { width: 100%; border: none; border-radius: 12px; margin-top: 8px; padding: 12px 10px; text-align: left; background: #192638; color: #dae6fb; overflow: hidden; }
+.ticker-track { display: block; white-space: nowrap; }
+.ticker-item { display: inline-block; padding-left: 100%; animation: ticker-scroll 12s linear infinite; }
 .debug { margin-top: 10px; }
 .debug-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .debug button, .modal button, .screen button { min-height: 42px; border-radius: 10px; border: none; background: #2e4463; color: #fff; }
 .convoy { margin-bottom: 8px; display: grid; gap: 4px; }
+.convoy-stats { display: grid; gap: 4px; }
+.convoy-stat-row { display: grid; grid-template-columns: 72px 1fr 30px; gap: 8px; align-items: center; font-size: 12px; }
+.convoy-stat-row progress { width: 100%; height: 10px; }
 .muted { color: #a9b7cd; }
 .info-block { border: 1px solid #2d3f58; border-radius: 10px; padding: 8px; display: grid; gap: 4px; background: #172233; }
 .input-stack { display: grid; gap: 4px; font-size: 12px; }
@@ -29,7 +37,7 @@
 .action-btn--ready { background: #27864f !important; }
 .action-btn--busy { background: #a43e3e !important; }
 .action-btn:disabled { opacity: 1; cursor: not-allowed; }
-.assist-btn--disabled:disabled { background: #4b5668 !important; color: #c1c9d6; }
+.action-feedback { margin-bottom: 8px; }
 
 .feedback-warning { margin: 4px 0 0; color: #ffd5d5; background: #5a2525; border: 1px solid #9c4747; border-radius: 8px; padding: 8px; font-size: 12px; }
 .feedback-highlight { margin: 0; color: #fff0bf; font-size: 12px; }
@@ -43,4 +51,9 @@
   0%, 100% { transform: translateX(0); }
   25% { transform: translateX(-4px); }
   75% { transform: translateX(4px); }
+}
+
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
 }

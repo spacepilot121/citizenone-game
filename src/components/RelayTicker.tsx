@@ -5,7 +5,9 @@ export function RelayTicker({ onOpenLog }: { onOpenLog: () => void }) {
   const latest = state.messages[0];
   return (
     <button className="ticker" onClick={onOpenLog}>
-      <strong>Relay:</strong> {latest?.text ?? 'No traffic'}
+      <span className="ticker-track">
+        <span className="ticker-item"><strong>Relay:</strong> {latest?.text ?? 'No traffic'}</span>
+      </span>
     </button>
   );
 }
