@@ -24,6 +24,13 @@
 .ticker-item { display: inline-block; padding-left: 100%; animation: ticker-scroll 12s linear infinite; }
 .debug { margin-top: 10px; }
 .debug-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.debug-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.debug-header h4 { margin: 0; }
+.debug-drawer-wrap { position: sticky; bottom: 8px; z-index: 30; display: grid; gap: 8px; margin-top: 10px; }
+.debug-toggle { width: 100%; min-height: 44px; border-radius: 12px; border: 1px solid #3d5476; background: #182437; color: #fff; }
+.location-modal { gap: 0; }
+.location-modal p, .location-modal h4, .location-modal h5 { margin: 2px 0; }
+.location-modal .row { padding: 4px 0; }
 .debug button, .modal button, .screen button { min-height: 42px; border-radius: 10px; border: none; background: #2e4463; color: #fff; }
 .convoy { margin-bottom: 8px; display: grid; gap: 4px; }
 .convoy-stats { display: grid; gap: 4px; }

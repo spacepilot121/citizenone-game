@@ -65,6 +65,7 @@ export function App() {
   const [feedbackRouteId, setFeedbackRouteId] = useState<string | null>(null);
   const [highlightGoodId, setHighlightGoodId] = useState<string | null>(null);
   const [highlightResource, setHighlightResource] = useState<'money' | 'gold' | null>(null);
+  const [isDebugOpen, setIsDebugOpen] = useState(false);
 
   const connectedRoutes = useMemo(() => state.routes.filter((r) => state.locations.find((l) => l.id === r.destinationId)?.unlocked), [state]);
   const unlockedVehicles = useMemo(() => getUnlockedVehicles(state.facilities), [state.facilities]);
@@ -377,7 +378,7 @@ export function App() {
         const locationHours = formatOpenHours(l.openHours);
         return (
           <div className="modal">
-            <div className="card">
+            <div className="card location-modal">
               <h4>{l.name}</h4>
               <p>{l.type} · {l.contactName} · {l.personality}</p>
               <p>{l.flavor}</p>
@@ -477,7 +478,14 @@ export function App() {
           </div>
         );
       })()}
-      {state.debug.enabled && <DebugPanel />}
+      {state.debug.enabled && (
+        <div className="debug-drawer-wrap">
+          {isDebugOpen && <DebugPanel onClose={() => setIsDebugOpen(false)} />}
+          <button className="debug-toggle" onClick={() => setIsDebugOpen((prev) => !prev)}>
+            {isDebugOpen ? 'Hide Debug Menu' : 'Open Debug Menu'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
