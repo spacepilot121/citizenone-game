@@ -311,11 +311,11 @@ export function App() {
                       >
                         {isBusy ? `Manufacturing Busy (${activeTimer})` : `Produce Basic Electronics (${formatResourceCost({ goods: basicElectronicsCost })} · ${estimatedProductionDuration})`}
                       </button>
-                      <button onClick={() => actions.assistProduction('manufacturing')} disabled={!canTapAssist}>Tap Assist (-5m)</button>
+                      <button className={`assist-btn ${!canTapAssist ? 'assist-btn--disabled' : ''}`} onClick={() => actions.assistProduction('manufacturing')} disabled={!canTapAssist}>Tap Assist (-5m)</button>
                     </>
                   )}
                   {f.id !== 'manufacturing' && (
-                    <button onClick={() => actions.assistProduction(f.id)} disabled={!canTapAssist}>Tap Assist (-5m)</button>
+                    <button className={`assist-btn ${!canTapAssist ? 'assist-btn--disabled' : ''}`} onClick={() => actions.assistProduction(f.id)} disabled={!canTapAssist}>Tap Assist (-5m)</button>
                   )}
                   {f.id === 'research_facility' && (
                     <>
