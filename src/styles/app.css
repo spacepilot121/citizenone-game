@@ -29,6 +29,7 @@
 .action-btn--ready { background: #27864f !important; }
 .action-btn--busy { background: #a43e3e !important; }
 .action-btn:disabled { opacity: 1; cursor: not-allowed; }
+.assist-btn--disabled:disabled { background: #4b5668 !important; color: #c1c9d6; }
 
 .feedback-warning { margin: 4px 0 0; color: #ffd5d5; background: #5a2525; border: 1px solid #9c4747; border-radius: 8px; padding: 8px; font-size: 12px; }
 .feedback-highlight { margin: 0; color: #fff0bf; font-size: 12px; }

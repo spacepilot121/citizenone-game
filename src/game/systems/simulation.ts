@@ -2,7 +2,7 @@ import { starterFacilities, unlockCosts } from '../data/facilities';
 import { goods, goodMap } from '../data/goods';
 import { baseLocationId, starterLocations, starterRoutes, vehicles } from '../data/world';
 import { Convoy, Facility, GameMessage, GameState, Location, Route } from '../models/types';
-import { HOUR, clamp, currentGameTime, gameDay, gameHour, isLocationOpen, isNightPhase } from '../../utils/time';
+import { HOUR, clamp, currentGameTime, gameDay, gameHour, isLocationOpen, isNightPhase, locationNightOpenHours } from '../../utils/time';
 
 const storageUsed = (state: GameState): number =>
   Object.entries(state.goodsInventory).reduce((sum, [id, qty]) => sum + (goodMap[id]?.cargoSize ?? 1) * qty, 0);
@@ -30,13 +30,20 @@ function marketMultiplier(type: Location['type'], category: string): number {
 
 export function createInitialState(): GameState {
   const now = Date.now();
+  const locations = structuredClone(starterLocations).map((location) => {
+    if (location.id === baseLocationId) return location;
+    return {
+      ...location,
+      openHours: locationNightOpenHours(location.id, location.reputation, now, now)
+    };
+  });
   return {
     firstSaveAt: now,
     lastTickAt: now,
     resources: { money: 140, people: 3, electricity: 0, electricityCap: 4, storageCap: 5, gold: 1 },
     goodsInventory: { plastic_parts: 2, metal_scrap: 2 },
     facilities: structuredClone(starterFacilities),
-    locations: structuredClone(starterLocations),
+    locations,
     routes: structuredClone(starterRoutes),
     convoys: [],
     convoySlots: 1,
@@ -155,6 +162,9 @@ function processConvoys(state: GameState, now: number): void {
           state.resources.money += sold * (destination.market[c.goodId] ?? goodMap[c.goodId].baseValue);
         }
         destination.reputation += 2;
+        if (destination.id !== baseLocationId) {
+          destination.openHours = locationNightOpenHours(destination.id, destination.reputation, state.firstSaveAt, now);
+        }
       }
       route.tripsCompleted += 1;
       route.familiarity = clamp(route.familiarity + 0.03, 0, 1);
@@ -168,6 +178,16 @@ function processConvoys(state: GameState, now: number): void {
     }
   }
   state.convoys = state.convoys.filter((c) => !finished.includes(c));
+}
+
+function refreshLocationOpenHours(state: GameState, now: number): void {
+  for (const location of state.locations) {
+    if (location.id === baseLocationId) {
+      location.openHours = [0, 24];
+      continue;
+    }
+    location.openHours = locationNightOpenHours(location.id, location.reputation, state.firstSaveAt, now);
+  }
 }
 
 function processResearch(state: GameState, now: number): void {
@@ -193,6 +213,7 @@ function processResearch(state: GameState, now: number): void {
 
 export function tickState(state: GameState, now: number): GameState {
   const next = structuredClone(state);
+  refreshLocationOpenHours(next, now);
   processFacilities(next, now);
   processResearch(next, now);
   processConvoys(next, now);
