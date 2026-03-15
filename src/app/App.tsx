@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useGameStore } from '../game/store/GameStore';
 import { goodMap, goods } from '../game/data/goods';
 import { unlockCosts } from '../game/data/facilities';
-import { vehicles } from '../game/data/world';
+import { getUnlockedVehicles, vehicles } from '../game/data/world';
 import { routeRisk } from '../game/systems/simulation';
 import { RelayTicker } from '../components/RelayTicker';
 import { DebugPanel } from '../components/DebugPanel';
@@ -66,8 +66,9 @@ export function App() {
   const [highlightResource, setHighlightResource] = useState<'money' | 'gold' | null>(null);
 
   const connectedRoutes = useMemo(() => state.routes.filter((r) => state.locations.find((l) => l.id === r.destinationId)?.unlocked), [state]);
+  const unlockedVehicles = useMemo(() => getUnlockedVehicles(state.facilities), [state.facilities]);
 
-  const selectedConvoyVehicle = vehicles.find((v) => v.id === convoyVehicleId) ?? vehicles[0];
+  const selectedConvoyVehicle = unlockedVehicles.find((v) => v.id === convoyVehicleId) ?? unlockedVehicles[0];
   const stockedGoods = goods.filter((g) => (state.goodsInventory[g.id] ?? 0) > 0);
 
   function triggerFeedback(message: string, opts?: { goodId?: string; resource?: 'money' | 'gold' }) {
@@ -89,6 +90,11 @@ export function App() {
       setConvoyGoodId(stockedGoods[0].id);
     }
   }, [convoyGoodId, stockedGoods]);
+
+  useEffect(() => {
+    if (unlockedVehicles.some((v) => v.id === convoyVehicleId)) return;
+    setConvoyVehicleId(unlockedVehicles[0].id);
+  }, [convoyVehicleId, unlockedVehicles]);
 
   return (
     <div className="app">
@@ -355,8 +361,7 @@ export function App() {
               <h4>{l.name}</h4>
               <p>{l.type} · {l.contactName} · {l.personality}</p>
               <p>{l.flavor}</p>
-              <p>Reputation: {l.reputation}</p>
-              <p>{locationOpenNow ? `Open now · Hours ${locationHours}` : `Closed right now (time-locked) · Hours ${locationHours}`}</p>
+              <p>Rep {l.reputation} · {locationOpenNow ? `Open · ${locationHours}` : `Closed · ${locationHours}`}</p>
               <h5>Market</h5>
               {Object.entries(l.market).slice(0, 5).map(([id, price]) => (
                 <div key={id} className="row"><span>{goodMap[id]?.name ?? id}</span><span>${price}</span></div>
@@ -373,7 +378,7 @@ export function App() {
               <label className="input-stack">
                 <span>Convoy vehicle</span>
                 <select value={convoyVehicleId} onChange={(e) => setConvoyVehicleId(e.target.value)}>
-                  {vehicles.map((v) => (
+                  {unlockedVehicles.map((v) => (
                     <option key={v.id} value={v.id}>{v.name} (cargo {v.cargoCapacity})</option>
                   ))}
                 </select>
@@ -401,11 +406,8 @@ export function App() {
                 const risk = routeRisk(r);
                 return (
                   <div key={r.id} className="info-block">
-                    <strong>Route {r.id} preview</strong>
-                    <p>Destination: {l.name}</p>
-                    <p>Travel time (one-way): {formatDuration(travelMs)}</p>
-                    <p>Risk factor: {(risk * 100).toFixed(1)}%</p>
-                    <p>Vehicle: {selectedConvoyVehicle.name} · Cargo cap {selectedConvoyVehicle.cargoCapacity}</p>
+                    <strong>Route {r.id}</strong>
+                    <p>{formatDuration(travelMs)} one-way · {(risk * 100).toFixed(1)}% risk · {selectedConvoyVehicle.name} ({selectedConvoyVehicle.cargoCapacity} cap)</p>
                     <button
                       className={isShaking ? 'shake-on-fail' : ''}
                       onClick={() => {
@@ -434,7 +436,7 @@ export function App() {
                   </div>
                 );
               })}
-              {!locationOpenNow && <p className="muted">Dispatch is time-locked until this location opens ({locationHours}).</p>}
+              {!locationOpenNow && <p className="muted">Dispatch locked until {locationHours}.</p>}
               {feedback && <p className="feedback-warning">{feedback}</p>}
               {highlightGoodId && <p className="feedback-highlight">Missing: {goodMap[highlightGoodId]?.name ?? highlightGoodId}</p>}
               <button onClick={() => setSelectedLocation(null)}>Close</button>
