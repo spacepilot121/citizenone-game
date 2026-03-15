@@ -1,6 +1,6 @@
 import { starterFacilities, unlockCosts } from '../data/facilities';
 import { goods, goodMap } from '../data/goods';
-import { baseLocationId, starterLocations, starterRoutes, vehicles } from '../data/world';
+import { baseLocationId, getUnlockedVehicles, starterLocations, starterRoutes } from '../data/world';
 import { Convoy, Facility, GameMessage, GameState, Location, Route } from '../models/types';
 import { HOUR, clamp, currentGameTime, gameDay, gameHour, isLocationOpen, isNightPhase, locationNightOpenHours } from '../../utils/time';
 
@@ -313,7 +313,8 @@ export function launchConvoy(
   if ((next.goodsInventory[cargoGoodId] ?? 0) < amount) return state;
   const destination = next.locations.find((l) => l.id === route.destinationId);
   if (!destination || !destination.unlocked || !isLocationOpen(destination.openHours, now)) return state;
-  const vehicle = vehicles.find((v) => v.id === vehicleId) ?? vehicles[0];
+  const availableVehicles = getUnlockedVehicles(next.facilities);
+  const vehicle = availableVehicles.find((v) => v.id === vehicleId) ?? availableVehicles[0];
   const convoy: Convoy = {
     id: `C-${Math.floor(now / 1000).toString(36)}`,
     slot: next.convoys.length + 1,

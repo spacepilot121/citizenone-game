@@ -1,4 +1,4 @@
-import { Location, Route, Vehicle } from '../models/types';
+import { Facility, Location, Route, Vehicle } from '../models/types';
 
 export const vehicles: Vehicle[] = [
   { id: 'push_bike', name: 'Push Bike Courier', cargoCapacity: 8, speed: 18, fuelCapacity: 0, fuelConsumption: 0, batteryCapacity: 10, armour: 4, tyres: 12, ammo: 0, crewCapacity: 1, stealth: 9 },
@@ -12,11 +12,11 @@ export const vehicles: Vehicle[] = [
 export const baseLocationId = 'hideout';
 
 export const starterLocations: Location[] = [
-  { id: 'hideout', name: 'Hidden Basement', type: 'logistics', contactName: 'Relay 0', personality: 'careful and dry', flavor: 'A reinforced cellar beneath a shuttered workshop.', unlocked: true, reputation: 0, openHours: [0, 24], market: {}, missions: [], x: 50, y: 52 },
-  { id: 'river_settlement', name: 'River Settlement', type: 'settlement', contactName: 'Mila Arsen', personality: 'practical quartermaster', flavor: 'A dense riverside district running on barter and generator light.', unlocked: true, reputation: 5, openHours: [6, 21], market: {}, missions: [], x: 72, y: 43 },
-  { id: 'field_clinic', name: 'Field Clinic 7', type: 'medical', contactName: 'Dr. Ilya Soren', personality: 'calm under pressure', flavor: 'A triage center hidden in an old school basement.', unlocked: false, reputation: 0, openHours: [7, 20], market: {}, missions: [], x: 64, y: 70 },
-  { id: 'iron_ruins', name: 'Iron Ruins', type: 'industrial', contactName: 'Barto K', personality: 'grease-stained realist', flavor: 'Collapsed assembly halls with salvage crews and contested roads.', unlocked: false, reputation: 0, openHours: [8, 18], market: {}, missions: [], x: 34, y: 32 },
-  { id: 'night_exchange', name: 'Night Exchange', type: 'black_market', contactName: 'Madam Veil', personality: 'smiling opportunist', flavor: 'A rotating market hidden behind changing shutters.', unlocked: false, reputation: 0, openHours: [19, 4], market: {}, missions: [], x: 26, y: 62 },
+  { id: 'hideout', name: 'Hidden Basement', type: 'logistics', contactName: 'Relay 0', personality: 'careful and dry', flavor: 'A reinforced cellar beneath a shuttered workshop.', unlocked: true, reputation: 0, openHours: [17, 19], market: {}, missions: [], x: 50, y: 52 },
+  { id: 'river_settlement', name: 'River Settlement', type: 'settlement', contactName: 'Mila Arsen', personality: 'practical quartermaster', flavor: 'A dense riverside district running on barter and generator light.', unlocked: true, reputation: 5, openHours: [17, 20], market: {}, missions: [], x: 72, y: 43 },
+  { id: 'field_clinic', name: 'Field Clinic 7', type: 'medical', contactName: 'Dr. Ilya Soren', personality: 'calm under pressure', flavor: 'A triage center hidden in an old school basement.', unlocked: false, reputation: 0, openHours: [17, 21], market: {}, missions: [], x: 64, y: 70 },
+  { id: 'iron_ruins', name: 'Iron Ruins', type: 'industrial', contactName: 'Barto K', personality: 'grease-stained realist', flavor: 'Collapsed assembly halls with salvage crews and contested roads.', unlocked: false, reputation: 0, openHours: [17, 22], market: {}, missions: [], x: 34, y: 32 },
+  { id: 'night_exchange', name: 'Night Exchange', type: 'black_market', contactName: 'Madam Veil', personality: 'smiling opportunist', flavor: 'A rotating market hidden behind changing shutters.', unlocked: false, reputation: 0, openHours: [17, 23], market: {}, missions: [], x: 26, y: 62 },
   { id: 'signal_watch', name: 'Signal Watch', type: 'intel', contactName: 'Echo-Nine', personality: 'cryptic analyst', flavor: 'An interception post listening to everything at once.', unlocked: false, reputation: 0, openHours: [0, 24], market: {}, missions: [], x: 82, y: 20 }
 ];
 
@@ -27,3 +27,27 @@ export const starterRoutes: Route[] = [
   { id: 'r3', originId: 'hideout', destinationId: 'night_exchange', distance: 18, baseRisk: 0.35, tripsCompleted: 0, familiarity: 0, stability: 0 },
   { id: 'r4', originId: 'river_settlement', destinationId: 'signal_watch', distance: 26, baseRisk: 0.3, tripsCompleted: 0, familiarity: 0, stability: 0 }
 ];
+
+export function getUnlockedVehicles(facilities: Facility[]): Vehicle[] {
+  const unlocked: Vehicle[] = [vehicles[0]];
+  const vehicleFacility = facilities.find((f) => f.id === 'vehicle_facility');
+  const defenceFacility = facilities.find((f) => f.id === 'defence_facility');
+
+  if (vehicleFacility?.unlocked) {
+    unlocked.push(vehicles[1], vehicles[2]);
+  }
+
+  if ((vehicleFacility?.level ?? 0) >= 2) {
+    unlocked.push(vehicles[3]);
+  }
+
+  if (defenceFacility?.unlocked) {
+    unlocked.push(vehicles[4]);
+  }
+
+  if ((defenceFacility?.level ?? 0) >= 2) {
+    unlocked.push(vehicles[5]);
+  }
+
+  return unlocked;
+}
