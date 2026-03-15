@@ -1,4 +1,4 @@
-.app { max-width: 520px; margin: 0 auto; padding: 8px 8px 76px; }
+.app { max-width: 520px; margin: 0 auto; padding: 8px; }
 .card { background: #131a26; border: 1px solid #2c3a52; border-radius: 12px; padding: 10px; }
 .topbar { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; font-size: 13px; position: sticky; top: 6px; z-index: 5; }
 .screen { margin-top: 8px; }
@@ -16,7 +16,7 @@
 .list { max-height: 360px; overflow: auto; }
 .modal { position: fixed; inset: 0; background: #0009; display: flex; align-items: center; justify-content: center; padding: 12px; z-index: 20; }
 .modal .card { width: min(500px, 100%); max-height: 90vh; overflow: auto; display: grid; gap: 8px; }
-.ticker { position: fixed; left: 0; right: 0; bottom: 0; width: 100%; border: none; padding: 14px 10px calc(14px + env(safe-area-inset-bottom)); text-align: left; background: #192638; color: #dae6fb; z-index: 10; }
+.ticker { width: 100%; border: none; border-radius: 12px; margin-top: 8px; padding: 12px 10px; text-align: left; background: #192638; color: #dae6fb; }
 .debug { margin-top: 10px; }
 .debug-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .debug button, .modal button, .screen button { min-height: 42px; border-radius: 10px; border: none; background: #2e4463; color: #fff; }

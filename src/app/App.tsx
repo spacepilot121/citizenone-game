@@ -95,6 +95,8 @@ export function App() {
         <div className={highlightResource === 'gold' ? 'resource-alert' : ''}>Gold {state.resources.gold}</div>
       </header>
 
+      <RelayTicker onOpenLog={() => setScreen('messages')} />
+
       {screen === 'dashboard' && (
         <main className="screen card">
           <h2>CitizenOne Operations</h2>
@@ -429,8 +431,6 @@ export function App() {
           </div>
         );
       })()}
-
-      <RelayTicker onOpenLog={() => setScreen('messages')} />
       {state.debug.enabled && <DebugPanel />}
     </div>
   );
