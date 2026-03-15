@@ -44,6 +44,14 @@ function formatResourceCost(cost: { money?: number; goods?: Array<{ goodId: stri
   return parts.length ? parts.join(' · ') : 'No resources required';
 }
 
+function formatHour(hour: number): string {
+  return `${String(hour).padStart(2, '0')}:00`;
+}
+
+function formatOpenHours([start, end]: [number, number]): string {
+  return `${formatHour(start)}-${formatHour(end)}`;
+}
+
 export function App() {
   const { state, metrics, now, actions } = useGameStore();
   const [screen, setScreen] = useState<Screen>('dashboard');
@@ -168,7 +176,7 @@ export function App() {
       {screen === 'convoys' && (
         <main className="screen card">
           <h3>Convoys</h3>
-          <p>Slots: {state.convoys.length}/{state.convoySlots} (locked {state.lockedConvoySlots})</p>
+          <p>Slots in use: {state.convoys.length}/{state.convoySlots}</p>
           {state.convoys.map((c) => (
             <article key={c.id} className="card convoy">
               <strong>{c.id} · {vehicles.find((v) => v.id === c.vehicleId)?.name}</strong>
@@ -339,6 +347,8 @@ export function App() {
       {selectedLocation && (() => {
         const l = state.locations.find((x) => x.id === selectedLocation)!;
         const routesToLocation = state.routes.filter((r) => r.destinationId === l.id);
+        const locationOpenNow = actions.isLocationOpen(l.openHours);
+        const locationHours = formatOpenHours(l.openHours);
         return (
           <div className="modal">
             <div className="card">
@@ -346,7 +356,7 @@ export function App() {
               <p>{l.type} · {l.contactName} · {l.personality}</p>
               <p>{l.flavor}</p>
               <p>Reputation: {l.reputation}</p>
-              <p>{actions.isLocationOpen(l.openHours) ? 'Open' : 'Closed'}</p>
+              <p>{locationOpenNow ? `Open now · Hours ${locationHours}` : `Closed right now (time-locked) · Hours ${locationHours}`}</p>
               <h5>Market</h5>
               {Object.entries(l.market).slice(0, 5).map(([id, price]) => (
                 <div key={id} className="row"><span>{goodMap[id]?.name ?? id}</span><span>${price}</span></div>
@@ -404,7 +414,7 @@ export function App() {
                           return;
                         }
                         if (!actions.isLocationOpen(l.openHours)) {
-                          triggerFeedback('Location is closed right now.');
+                          triggerFeedback(`Location is closed right now (open ${locationHours}).`);
                           return;
                         }
                         if (!stockedGoods.length) {
@@ -424,6 +434,7 @@ export function App() {
                   </div>
                 );
               })}
+              {!locationOpenNow && <p className="muted">Dispatch is time-locked until this location opens ({locationHours}).</p>}
               {feedback && <p className="feedback-warning">{feedback}</p>}
               {highlightGoodId && <p className="feedback-highlight">Missing: {goodMap[highlightGoodId]?.name ?? highlightGoodId}</p>}
               <button onClick={() => setSelectedLocation(null)}>Close</button>
