@@ -1,10 +1,17 @@
 import { useGameStore } from '../game/store/GameStore';
 
-export function DebugPanel() {
+type DebugPanelProps = {
+  onClose?: () => void;
+};
+
+export function DebugPanel({ onClose }: DebugPanelProps) {
   const { actions } = useGameStore();
   return (
     <aside className="debug card">
-      <h4>Debug</h4>
+      <div className="debug-header">
+        <h4>Debug</h4>
+        {onClose && <button onClick={onClose}>Close</button>}
+      </div>
       <div className="debug-grid">
         <button onClick={() => actions.debugAdvance(2)}>Advance 2 hours</button>
         <button onClick={() => actions.debugAdvance(8)}>Advance 8 hours</button>
